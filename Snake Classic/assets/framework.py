@@ -4,21 +4,21 @@ from pygame.locals import *
 pygame.init()
 pygame.mixer.pre_init(44100, -16, 2, 512)
 
-WHITE = (255,255,255)
-BLACK = (0,0,0)
-GREY = (152,152,152)
-MEDIUM_GREY = (170,170,170)
-LIGHT_GREY = (220,220,220)
-RED = (255,0,0)
-BLUE = (65,105,255)
-YELLOW = (224,208,31)
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+GREY = (152, 152, 152)
+MEDIUM_GREY = (170, 170, 170)
+LIGHT_GREY = (220, 220, 220)
+RED = (255, 0, 0)
+BLUE = (65, 105, 255)
+YELLOW = (224, 208, 31)
 
 m = 20
-head_img = pygame.transform.scale(pygame.image.load('assets/images/head.png'),(m,m))
-body_img = pygame.transform.scale(pygame.image.load('assets/images/body.png'),(m,m))
-food_img = pygame.transform.scale(pygame.image.load('assets/images/food.png'),(m,m))
-boost_img = [pygame.transform.scale(pygame.image.load('assets/images/score_boost.png'),(m,m)),
-			pygame.transform.scale(pygame.image.load('assets/images/speed_boost.png'),(m,m))]
+head_img = pygame.transform.scale(pygame.image.load('assets/images/head.png'), (m, m))
+body_img = pygame.transform.scale(pygame.image.load('assets/images/body.png'), (m, m))
+food_img = pygame.transform.scale(pygame.image.load('assets/images/food.png'), (m, m))
+boost_img = [pygame.transform.scale(pygame.image.load('assets/images/score_boost.png'), (m, m)),
+			pygame.transform.scale(pygame.image.load('assets/images/speed_boost.png'), (m, m))]
 eating_sound = pygame.mixer.Sound('assets/sounds/eating.wav')
 boost_sound = pygame.mixer.Sound('assets/sounds/boost.wav')
 boost_sound.set_volume(0.5)
@@ -34,31 +34,50 @@ def get_win_size(screen):
 def fade_out(WINDOW_SIZE, draw_surface):
 	fade_out = pygame.Surface(WINDOW_SIZE)
 	fade_out.fill(WHITE)
-	for alpha in range(0,256): #Set opaque value 
+	for alpha in range(0, 256):  #Set opaque value 
 		fade_out.set_alpha(alpha)
-		draw_surface.blit(fade_out, (0,0))
+		draw_surface.blit(fade_out, (0, 0))
 		pygame.display.update()
-		pygame.time.delay(4) #Thời gian chuyển cảnh
+		pygame.time.delay(4)  #Thời gian chuyển cảnh
 
 #Hàm vẽ vùng sáng quanh particle
 def circle_to_surf(radius, color):
-	surf = pygame.Surface((radius * 2, radius * 2)) #Bán kính ánh sáng gấp đôi particle
-	pygame.draw.circle(surf, color, (radius, radius), radius) #Vẽ hình tròn ở tâm của surface
+	surf = pygame.Surface((radius * 2, radius * 2))  #Bán kính ánh sáng gấp đôi particle
+	pygame.draw.circle(surf, color, (radius, radius), radius)  #Vẽ hình tròn ở tâm của surface
 	surf.set_colorkey(BLACK)
 	return surf
 
 #Hàm viết văn bản:
 def draw_text(text, font_name, size, bold, color, surface, x, y):
-	font = pygame.font.SysFont(font_name, size, bold)
-	textobj = font.render(text, True, color)
-	textrect = textobj.get_rect()
-	textrect.midtop = (x,y)
-	surface.blit(textobj, textrect)
+	font = pygame.font.SysFont(font_name, size, bold)  # Get the font
+	textobj = font.render(text, True, color)  # Render input text with that font
+	textrect = textobj.get_rect()  # Get the font Rect object
+	textrect.midtop = (x,y)  # Set the position to top center
+	surface.blit(textobj, textrect)  # Blit
 
 #Hàm vẽ hình chữ nhật ở vị trí midtop:
 def draw_rect(Rect_name, draw_surface, color, x, y):
 	Rect_name.midtop = (x,y)
 	pygame.draw.rect(draw_surface, color, Rect_name)
+
+# Hàm sản sinh shockwave effect:
+def shockwaves_generate(sw_list, click_flag, x, y, surf, color):
+	# Append [[x, y], radius, width - also timer] of the shockwave
+	if click_flag:
+		sw_list.append([[x, y], 1, 5])
+
+	# Loop through the shockwave list
+	for sw in sw_list:
+		if int(sw[2]) == 0:
+			sw[2] = -1  # Set the width to -1, so it'll draw nothing
+		pygame.draw.circle(surf, color, [sw[0][0], sw[0][1]], sw[1], int(sw[2]))
+		sw[2] -= 0.07  # Decrease the line width of the circle over time, equivalent to increase the last duration of it
+		sw[1] += 1  # Increase the radius of the circle over time
+
+	#print(sorted(enumerate(sw_list), reverse=True))
+	for i, v in sorted(enumerate(sw_list), reverse=True):
+		if v[2] <= 0:
+			sw_list.pop(i)
 
 #Hàm sản sinh particles effect:
 def particles_generate(particles_list, screen, color, x, y):
@@ -86,36 +105,57 @@ def particles_generate(particles_list, screen, color, x, y):
 
 #Hàm đọc file:
 def read_file(file_name, music_flag, fllscrn_flag, res_w, res_h):
-	f = open(file_name, 'r')
-	contents = f.readlines()
-	for line in contents:
-		if "Music" in line:
-			if "True" in line:
-				music_flag = True
-			else: music_flag = False
-		if "Resolution" in line:
-			splited_line = line.split()
-			res_w = int(splited_line[2])
-			res_h = int(splited_line[4])
-		if "Fullscreen" in line:
-			if "True" in line:
-				fllscrn_flag = True
-			else: fllscrn_flag = False
-	f.close()
-	return music_flag, fllscrn_flag, res_w, res_h
+	try:
+		f = open(file_name, 'r')
+		content = f.readlines()
+		# print(content)
+		
+		for line in content:
+			line = line.lower()
+			if "music" in line:
+				if "true" in line:
+					music_flag = True
+				else:
+					music_flag = False
+			
+			elif "resolution" in line:
+				splited_line = line.split()
+				res_w = int(splited_line[2])
+				res_h = int(splited_line[4])
+			
+			elif "fullscreen" in line:
+				if "true" in line:
+					fllscrn_flag = True
+				else:
+					fllscrn_flag = False
+		
+		return music_flag, fllscrn_flag, res_w, res_h
+	
+	except IOError:
+		print('An error occurred while reading the file.')
+	
+	finally:
+		f.close()
 
 #Hàm ghi file
 def write_file(file_name, music_flag, fllscrn_flag, res_w, res_h):
-	f = open(file_name, 'w')
-	f.write(f'Music = {music_flag}\n')
-	f.write(f'Resolution = {res_w} x {res_h}\n')
-	f.write(f'Fullscreen: = {fllscrn_flag}\n')
-	f.close()
+	try:
+		f = open(file_name, 'w')
+		f.write(f'Music = {music_flag}\n')
+		f.write(f'Resolution = {res_w} x {res_h}\n')
+		f.write(f'Fullscreen: = {fllscrn_flag}\n')
+	
+	except IOError:
+		print('An error occurred while writing to the file.')
+	
+	finally:
+		f.close()
 
 #Hàm settings:
 def show_settings(music_flag, fllscrn_flag, res_w, res_h, WINDOW_SIZE, monitor_size, screen, ws, clock, framerate):
 	running = True
 	click = False
+	shockwaves = []
 
 	alpha = 255
 	while running:
@@ -180,11 +220,15 @@ def show_settings(music_flag, fllscrn_flag, res_w, res_h, WINDOW_SIZE, monitor_s
 				break
 
 		draw_text('© by Constance, v1.0', 'consolas', 15, False, BLACK, screen, ws[0]/2, ws[1]-15)
+
+		shockwaves_generate(shockwaves, click, mx, my, screen, BLACK)
 		
 		if alpha > 0:
 			if alpha == 255:
 				fade_in = pygame.Surface(get_win_size(screen))
 				fade_in.fill(WHITE)
+				shockwaves.clear()
+
 			fade_in.set_alpha(alpha)
 			screen.blit(fade_in, (0,0))
 			alpha -= 15
@@ -202,7 +246,7 @@ def show_settings(music_flag, fllscrn_flag, res_w, res_h, WINDOW_SIZE, monitor_s
 				if event.button == 1:
 					click = True
 			if event.type == VIDEORESIZE:
-				if fllscrn_flag == False:
+				if not fllscrn_flag:
 					screen = pygame.display.set_mode((event.w, event.h), pygame.RESIZABLE)
 					ws = [screen.get_width(), screen.get_height()]
 		
@@ -215,6 +259,7 @@ def show_controls(fllscrn_flag, WINDOW_SIZE, screen, ws, clock, framerate):
 	running = True 
 	click = False
 	alpha = 255
+	shockwaves = []
 
 	while running:
 		screen.fill(WHITE)
@@ -241,10 +286,14 @@ def show_controls(fllscrn_flag, WINDOW_SIZE, screen, ws, clock, framerate):
 
 		draw_text('© by Constance, v1.0', 'consolas', 15, False, BLACK, screen, ws[0]/2, ws[1]-15)
 
+		shockwaves_generate(shockwaves, click, mx, my, screen, BLACK)
+
 		if alpha > 0:
 			if alpha == 255:
 				fade_in = pygame.Surface(get_win_size(screen))
 				fade_in.fill(WHITE)
+				shockwaves.clear()
+
 			fade_in.set_alpha(alpha)
 			screen.blit(fade_in, (0,0))
 			alpha -= 15
@@ -262,7 +311,7 @@ def show_controls(fllscrn_flag, WINDOW_SIZE, screen, ws, clock, framerate):
 				if event.button == 1:
 					click = True
 			if event.type == VIDEORESIZE:
-				if fllscrn_flag == False:
+				if not fllscrn_flag:
 					screen = pygame.display.set_mode((event.w, event.h), pygame.RESIZABLE)
 					ws = [screen.get_width(), screen.get_height()]
 
@@ -275,6 +324,7 @@ def show_resolution(music_flag, fllscrn_flag, res_w, res_h, WINDOW_SIZE, monitor
 	running = True 
 	click = False
 	alpha = 255
+	shockwaves = []
 
 	while running:
 		screen.fill(WHITE)
@@ -282,7 +332,7 @@ def show_resolution(music_flag, fllscrn_flag, res_w, res_h, WINDOW_SIZE, monitor
 
 		draw_text('RESOLUTION', 'consolas', 50, True, BLACK, screen, ws[0]/2, ws[1]/6)
 
-		if fllscrn_flag == False:
+		if not fllscrn_flag:
 			button_1 = pygame.Rect(200,340,200,50)
 			draw_rect(button_1, screen, GREY, ws[0]/2, ws[1]/10*3)
 			if res_w == 600 and res_h == 600:
@@ -354,7 +404,8 @@ def show_resolution(music_flag, fllscrn_flag, res_w, res_h, WINDOW_SIZE, monitor
 					screen = pygame.display.set_mode((res_w, res_h), pygame.RESIZABLE)
 					ws = [screen.get_width(), screen.get_height()]
 					write_file('data/user_config.txt', music_flag, fllscrn_flag, res_w, res_h)
-		elif fllscrn_flag == True:
+		
+		else:
 			button_1 = pygame.Rect(200,340,200,50)
 			draw_rect(button_1, screen, LIGHT_GREY, ws[0]/2, ws[1]/10*3)
 			draw_text('600 x 600', 'consolas', 30, False, GREY, screen, ws[0]/2, ws[1]/60*19)
@@ -379,17 +430,19 @@ def show_resolution(music_flag, fllscrn_flag, res_w, res_h, WINDOW_SIZE, monitor
 		else:
 			draw_text('Fullscreen', 'consolas', 30, False, BLACK, screen, ws[0]/2, ws[1]/60*43)
 		if button_5.collidepoint((mx,my)):
-			if fllscrn_flag == False:
+			if not fllscrn_flag:
 				draw_rect(button_5, screen, MEDIUM_GREY, ws[0]/2, ws[1]/10*7)
 				draw_text('Fullscreen', 'consolas', 30, False, YELLOW, screen, ws[0]/2, ws[1]/60*43)
 			if click:
 				fllscrn_flag = not fllscrn_flag
+				
 				if fllscrn_flag:
 					screen = pygame.display.set_mode(monitor_size, pygame.FULLSCREEN)
 					ws = [screen.get_width(), screen.get_height()]
 				else:
 					screen = pygame.display.set_mode((res_w, res_h), pygame.RESIZABLE)
 					ws = [screen.get_width(), screen.get_height()]
+				
 				write_file('data/user_config.txt', music_flag, fllscrn_flag, res_w, res_h)
 
 		button_6 = pygame.Rect(200,400,200,50)
@@ -405,10 +458,14 @@ def show_resolution(music_flag, fllscrn_flag, res_w, res_h, WINDOW_SIZE, monitor
 
 		draw_text('© by Constance, v1.0', 'consolas', 15, False, BLACK, screen, ws[0]/2, ws[1]-15)
 
+		shockwaves_generate(shockwaves, click, mx, my, screen, BLACK)
+
 		if alpha > 0:
 			if alpha == 255:
 				fade_in = pygame.Surface(get_win_size(screen))
 				fade_in.fill(WHITE)
+				shockwaves.clear()
+
 			fade_in.set_alpha(alpha)
 			screen.blit(fade_in, (0,0))
 			alpha -= 15
@@ -426,7 +483,7 @@ def show_resolution(music_flag, fllscrn_flag, res_w, res_h, WINDOW_SIZE, monitor
 				if event.button == 1:
 					click = True
 			if event.type == VIDEORESIZE:
-				if fllscrn_flag == False:
+				if not fllscrn_flag:
 					screen = pygame.display.set_mode((event.w, event.h), pygame.RESIZABLE)
 					ws = [screen.get_width(), screen.get_height()]
 
@@ -480,7 +537,7 @@ def pause_menu(exit_flag, fllscrn_flag, WINDOW_SIZE, screen, ws, clock, framerat
 				if event.button == 1:
 					click = True
 			if event.type == VIDEORESIZE:
-				if fllscrn_flag == False:
+				if not fllscrn_flag:
 					screen = pygame.display.set_mode((event.w, event.h), pygame.RESIZABLE)
 					ws = [screen.get_width(), screen.get_height()]
 					surf = pygame.Surface(get_win_size(screen))
@@ -498,6 +555,7 @@ def game_over(return_menu_flag, retry_flag,  fllscrn_flag, screen, ws, clock, fr
 	click = False
 	return_menu_flag = False
 	retry_flag = False
+	shockwaves = []
 	game_over_sound.play()
 
 	while running:
@@ -528,6 +586,8 @@ def game_over(return_menu_flag, retry_flag,  fllscrn_flag, screen, ws, clock, fr
 				return_menu_flag = True
 				running = False
 
+		shockwaves_generate(shockwaves, click, mx, my, screen, BLACK)
+
 		click = False
 		for event in pygame.event.get():
 			if event.type == QUIT:
@@ -537,7 +597,7 @@ def game_over(return_menu_flag, retry_flag,  fllscrn_flag, screen, ws, clock, fr
 				if event.button == 1:
 					click = True
 			if event.type == VIDEORESIZE:
-				if fllscrn_flag == False:
+				if not fllscrn_flag:
 					screen = pygame.display.set_mode((event.w, event.h), pygame.RESIZABLE)
 					ws = [screen.get_width(), screen.get_height()]
 
