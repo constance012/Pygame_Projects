@@ -6,4 +6,5 @@ GAMES:
 1. Snak3: Classic
 
 VISUAL EFFECTS:
-1.Shockwave Effect
+1. Shockwave Effect
+2. Particles Effect
