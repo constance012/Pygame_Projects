@@ -1,5 +1,5 @@
 # Pygame_Projects
-Some of my pygame powered projects.
+Some of my games written in Python using Pygame.
 All rights reserved by Constance.
 
 GAMES:
