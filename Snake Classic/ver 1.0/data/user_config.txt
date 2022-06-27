@@ -1,3 +1,0 @@
-Music = False
-Resolution = 1366 x 768
-Fullscreen: = False
